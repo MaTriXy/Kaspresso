@@ -6,7 +6,6 @@ import androidx.test.espresso.FailureHandler
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
 import com.agoda.kakao.Kakao
-import com.kaspersky.kaspresso.autoscroll.AutoScrollParams
 import com.kaspersky.kaspresso.device.Device
 import com.kaspersky.kaspresso.device.accessibility.Accessibility
 import com.kaspersky.kaspresso.device.accessibility.AccessibilityImpl
@@ -35,7 +34,6 @@ import com.kaspersky.kaspresso.device.screenshots.ScreenshotsImpl
 import com.kaspersky.kaspresso.device.server.AdbServer
 import com.kaspersky.kaspresso.device.server.AdbServerImpl
 import com.kaspersky.kaspresso.failure.LoggingFailureHandler
-import com.kaspersky.kaspresso.flakysafety.FlakySafetyParams
 import com.kaspersky.kaspresso.interceptors.behavior.DataBehaviorInterceptor
 import com.kaspersky.kaspresso.interceptors.behavior.ViewBehaviorInterceptor
 import com.kaspersky.kaspresso.interceptors.behavior.WebBehaviorInterceptor
@@ -70,7 +68,11 @@ import com.kaspersky.kaspresso.interceptors.watcher.view.impl.logging.LoggingVie
 import com.kaspersky.kaspresso.interceptors.watcher.view.impl.logging.LoggingWebAssertionWatcherInterceptor
 import com.kaspersky.kaspresso.logger.UiTestLogger
 import com.kaspersky.kaspresso.logger.UiTestLoggerImpl
+import com.kaspersky.kaspresso.params.AutoScrollParams
+import com.kaspersky.kaspresso.params.FlakySafetyParams
+import com.kaspersky.kaspresso.params.Params
 import com.kaspersky.kaspresso.report.impl.AllureReportWriter
+import com.kaspersky.kaspresso.params.StepParams
 
 /**
  * The storage of all Kaspresso preferences and entities, such as [AdbServer], [Device] and different interceptors.
@@ -80,8 +82,7 @@ data class Kaspresso(
     internal val testLogger: UiTestLogger,
     internal val adbServer: AdbServer,
     internal val device: Device,
-    internal val flakySafetyParams: FlakySafetyParams,
-    internal val autoScrollParams: AutoScrollParams,
+    internal val params: Params,
     internal val viewActionWatcherInterceptors: List<ViewActionWatcherInterceptor>,
     internal val viewAssertionWatcherInterceptors: List<ViewAssertionWatcherInterceptor>,
     internal val atomWatcherInterceptors: List<AtomWatcherInterceptor>,
@@ -250,13 +251,19 @@ data class Kaspresso(
          * Holds the [FlakySafetyParams] for [com.kaspersky.kaspresso.flakysafety.FlakySafetyProvider]'s usage.
          * If it was not specified, the default implementation is used.
          */
-        var flakySafetyParams: FlakySafetyParams = FlakySafetyParams()
+        val flakySafetyParams: FlakySafetyParams = FlakySafetyParams()
 
         /**
          * Holds the [AutoScrollParams] for [com.kaspersky.kaspresso.autoscroll.AutoScrollProvider]'s usage.
          * If it was not specified, the default implementation is used.
          */
-        var autoScrollParams: AutoScrollParams = AutoScrollParams()
+        val autoScrollParams: AutoScrollParams = AutoScrollParams()
+
+        /**
+         * Holds the [StepParams] for [com.kaspersky.kaspresso.testcases.core.step.StepsManager]'s usage.
+         * If it was not specified, the default implementation is used.
+         */
+        val stepParams: StepParams = StepParams()
 
         /**
          * Holds the list of [ViewActionWatcherInterceptor]s.
@@ -390,6 +397,7 @@ data class Kaspresso(
                 testLogger = testLogger,
 
                 adbServer = adbServer,
+
                 device = Device(
                     apps = apps,
                     activities = activities,
@@ -405,8 +413,11 @@ data class Kaspresso(
                     exploit = exploit
                 ),
 
-                flakySafetyParams = flakySafetyParams,
-                autoScrollParams = autoScrollParams,
+                params = Params(
+                    flakySafetyParams = flakySafetyParams,
+                    autoScrollParams = autoScrollParams,
+                    stepParams = stepParams
+                ),
 
                 viewActionWatcherInterceptors = viewActionWatcherInterceptors,
                 viewAssertionWatcherInterceptors = viewAssertionWatcherInterceptors,
