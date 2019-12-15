@@ -19,6 +19,8 @@ import com.kaspersky.kaspresso.device.files.Files
 import com.kaspersky.kaspresso.device.files.FilesImpl
 import com.kaspersky.kaspresso.device.keyboard.Keyboard
 import com.kaspersky.kaspresso.device.keyboard.KeyboardImpl
+import com.kaspersky.kaspresso.device.languages.Language
+import com.kaspersky.kaspresso.device.languages.LanguageImpl
 import com.kaspersky.kaspresso.device.location.Location
 import com.kaspersky.kaspresso.device.location.LocationImpl
 import com.kaspersky.kaspresso.device.network.Network
@@ -53,6 +55,7 @@ import com.kaspersky.kaspresso.interceptors.tokakao.impl.KakaoViewInterceptor
 import com.kaspersky.kaspresso.interceptors.tokakao.impl.KakaoWebInterceptor
 import com.kaspersky.kaspresso.interceptors.watcher.testcase.StepWatcherInterceptor
 import com.kaspersky.kaspresso.interceptors.watcher.testcase.TestRunWatcherInterceptor
+import com.kaspersky.kaspresso.interceptors.watcher.testcase.impl.defaults.DefaultTestRunWatcherInterceptor
 import com.kaspersky.kaspresso.interceptors.watcher.testcase.impl.logging.LoggingStepWatcherInterceptor
 import com.kaspersky.kaspresso.interceptors.watcher.testcase.impl.logging.TestRunLoggerWatcherInterceptor
 import com.kaspersky.kaspresso.interceptors.watcher.testcase.impl.report.BuildStepReportWatcherInterceptor
@@ -69,10 +72,12 @@ import com.kaspersky.kaspresso.interceptors.watcher.view.impl.logging.LoggingWeb
 import com.kaspersky.kaspresso.logger.UiTestLogger
 import com.kaspersky.kaspresso.logger.UiTestLoggerImpl
 import com.kaspersky.kaspresso.params.AutoScrollParams
+import com.kaspersky.kaspresso.params.ContinuouslyParams
 import com.kaspersky.kaspresso.params.FlakySafetyParams
 import com.kaspersky.kaspresso.params.Params
-import com.kaspersky.kaspresso.report.impl.AllureReportWriter
 import com.kaspersky.kaspresso.params.StepParams
+import com.kaspersky.kaspresso.report.impl.AllureReportWriter
+import com.kaspersky.kaspresso.testcases.core.testcontext.BaseTestContext
 
 /**
  * The storage of all Kaspresso preferences and entities, such as [AdbServer], [Device] and different interceptors.
@@ -133,20 +138,20 @@ data class Kaspresso(
 
                     viewBehaviorInterceptors = mutableListOf(
                         AutoScrollViewBehaviorInterceptor(autoScrollParams, libLogger),
-                        SystemDialogSafetyViewBehaviorInterceptor(libLogger, uiDevice),
+                        SystemDialogSafetyViewBehaviorInterceptor(libLogger, uiDevice, adbServer),
                         FlakySafeViewBehaviorInterceptor(flakySafetyParams, libLogger),
                         FailureLoggingViewBehaviorInterceptor(libLogger)
                     )
 
                     dataBehaviorInterceptors = mutableListOf(
-                        SystemDialogSafetyDataBehaviorInterceptor(libLogger, uiDevice),
+                        SystemDialogSafetyDataBehaviorInterceptor(libLogger, uiDevice, adbServer),
                         FlakySafeDataBehaviorInterceptor(flakySafetyParams, libLogger),
                         FailureLoggingDataBehaviorInterceptor(libLogger)
                     )
 
                     webBehaviorInterceptors = mutableListOf(
                         AutoScrollWebBehaviorInterceptor(autoScrollParams, libLogger),
-                        SystemDialogSafetyWebBehaviorInterceptor(libLogger, uiDevice),
+                        SystemDialogSafetyWebBehaviorInterceptor(libLogger, uiDevice, adbServer),
                         FlakySafeWebBehaviorInterceptor(flakySafetyParams, libLogger),
                         FailureLoggingWebBehaviorInterceptor(libLogger)
                     )
@@ -159,7 +164,8 @@ data class Kaspresso(
                     testRunWatcherInterceptors = mutableListOf(
                         TestRunLoggerWatcherInterceptor(libLogger),
                         TestRunnerScreenshotWatcherInterceptor(screenshots),
-                        BuildStepReportWatcherInterceptor(AllureReportWriter(libLogger))
+                        BuildStepReportWatcherInterceptor(AllureReportWriter(libLogger)),
+                        defaultsTestRunWatcherInterceptor
                     )
 
                     failureHandler = LoggingFailureHandler(libLogger)
@@ -248,10 +254,21 @@ data class Kaspresso(
         var exploit: Exploit = ExploitImpl(activities, uiDevice, adbServer)
 
         /**
+         * Holds an implementation of [Language] interface. If it was not specified, the default implementation is used.
+         */
+        var language: Language = LanguageImpl(libLogger, instrumentation.targetContext)
+
+        /**
          * Holds the [FlakySafetyParams] for [com.kaspersky.kaspresso.flakysafety.FlakySafetyProvider]'s usage.
          * If it was not specified, the default implementation is used.
          */
         val flakySafetyParams: FlakySafetyParams = FlakySafetyParams()
+
+        /**
+         * Holds the [ContinuouslyParams] for [com.kaspersky.kaspresso.flakysafety.ContinuouslyProvider]'s usage.
+         * If it was not specified, the default implementation is used.
+         */
+        val continuouslyParams: ContinuouslyParams = ContinuouslyParams()
 
         /**
          * Holds the [AutoScrollParams] for [com.kaspersky.kaspresso.autoscroll.AutoScrollProvider]'s usage.
@@ -359,6 +376,30 @@ data class Kaspresso(
          */
         var failureHandler: FailureHandler? = null
 
+        private val defaultsTestRunWatcherInterceptor = DefaultTestRunWatcherInterceptor()
+
+        /**
+         * Set the action which will be executed before the test.
+         * The action has access to BaseTestContext.
+         * If you set @param override in false then the final beforeAction will be
+         *     beforeAction of the parent TestCase plus current @param action.
+         *     Otherwise final beforeAction will be only @param action.
+         */
+        fun beforeEachTest(override: Boolean = false, action: BaseTestContext.() -> Unit) {
+            defaultsTestRunWatcherInterceptor.beforeEachTest(override, action)
+        }
+
+        /**
+         * Set the action which will be executed after the test.
+         * The action has access to BaseTestContext.
+         * If you set @param override in false then the final beforeAction will be
+         *     beforeAction of the parent TestCase plus current @param action.
+         *     Otherwise final beforeAction will be only @param action.
+         */
+        fun afterEachTest(override: Boolean = false, action: BaseTestContext.() -> Unit) {
+            defaultsTestRunWatcherInterceptor.afterEachTest(override, action)
+        }
+
         /**
          * Sets the Kaspressos's implementations of Kakao's [androidx.test.espresso.ViewInteraction] interceptor,
          * [androidx.test.espresso.DataInteraction] interceptor and [androidx.test.espresso.WebInteraction] interceptor.
@@ -410,11 +451,13 @@ data class Kaspresso(
                     accessibility = accessibility,
                     permissions = permissions,
                     hackPermissions = hackPermissions,
-                    exploit = exploit
+                    exploit = exploit,
+                    language = language
                 ),
 
                 params = Params(
                     flakySafetyParams = flakySafetyParams,
+                    continuouslyParams = continuouslyParams,
                     autoScrollParams = autoScrollParams,
                     stepParams = stepParams
                 ),

@@ -45,6 +45,10 @@
                 android:label="@string/scroll_view_sample"/>
 
         <activity
+                android:name=".continuously.ContinuouslySampleActivity"
+                android:label="@string/continuously_sample"/>
+
+        <activity
                 android:name=".docloc.FragmentTestActivity"
                 android:theme="@style/Theme.AppCompat.NoActionBar"/>
 
@@ -52,6 +56,9 @@
         <activity
                 android:name=".device.DeviceSampleActivity"
                 android:label="@string/device_sample_title"/>
+
+        <activity android:name=".upgrade.UpgradeTestActivity"
+                android:label="@string/upgrade_title"/>
 
         <service
                 android:name=".device.DeviceSampleAccessibilityService"

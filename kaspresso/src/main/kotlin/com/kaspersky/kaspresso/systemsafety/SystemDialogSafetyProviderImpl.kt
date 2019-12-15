@@ -4,8 +4,8 @@ import android.widget.FrameLayout
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.UiDevice
-import androidx.test.uiautomator.UiSelector
 import androidx.test.uiautomator.Until
+import com.kaspersky.kaspresso.device.server.AdbServer
 import com.kaspersky.kaspresso.logger.UiTestLogger
 import java.util.concurrent.TimeUnit
 
@@ -14,12 +14,24 @@ import java.util.concurrent.TimeUnit
  */
 class SystemDialogSafetyProviderImpl(
     private val logger: UiTestLogger,
-    private val uiDevice: UiDevice
+    private val uiDevice: UiDevice,
+    private val adbServer: AdbServer
 ) : SystemDialogSafetyProvider {
 
-    private val attemptsToSuppress: List<(UiDevice) -> Unit> = listOf(
-        { uiDevice -> uiDevice.findObject(UiSelector().resourceId("android:id/button1")).click() },
-        { uiDevice -> uiDevice.pressBack() }
+    companion object {
+        private const val DEFAULT_TIMEOUT: Long = 2000
+    }
+
+    private val attemptsToSuppress: List<(UiDevice, AdbServer) -> Unit> = listOf(
+        { _, adbServer ->
+            adbServer.performShell("input keyevent KEYCODE_BACK")
+            adbServer.performShell("input keyevent KEYCODE_ENTER")
+            adbServer.performShell("input keyevent KEYCODE_ENTER")
+        },
+        { uiDevice, _ -> uiDevice.wait(Until.findObject(By.res("android:id/button1")), DEFAULT_TIMEOUT).click() },
+        { uiDevice, _ -> uiDevice.wait(Until.findObject(By.res("android:id/closeButton")), DEFAULT_TIMEOUT).click() },
+        { uiDevice, _ -> uiDevice.wait(Until.findObject(By.res("com.android.internal:id/aerr_close")), DEFAULT_TIMEOUT).click() },
+        { uiDevice, _ -> uiDevice.pressBack() }
     )
 
     /**
@@ -57,7 +69,7 @@ class SystemDialogSafetyProviderImpl(
             try {
                 logger.i("The suppressing of SystemDialogs on the try #$index starts")
 
-                attemptToSuppress.invoke(uiDevice)
+                attemptToSuppress.invoke(uiDevice, adbServer)
                 val result = action.invoke()
 
                 logger.i("The suppressing of SystemDialogs succeeds on the try #$index")
