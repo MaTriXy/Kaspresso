@@ -2,8 +2,11 @@ package com.kaspersky.kaspresso.testcases.api.testcase
 
 import com.kaspersky.kaspresso.device.Device
 import com.kaspersky.kaspresso.device.server.AdbServer
+import com.kaspersky.kaspresso.enricher.MainSectionEnricher
+import com.kaspersky.kaspresso.files.resources.ResourceFilesProvider
 import com.kaspersky.kaspresso.kaspresso.Kaspresso
 import com.kaspersky.kaspresso.logger.UiTestLogger
+import com.kaspersky.kaspresso.params.Params
 import com.kaspersky.kaspresso.testcases.core.sections.AfterTestSection
 import com.kaspersky.kaspresso.testcases.core.sections.BeforeTestSection
 import com.kaspersky.kaspresso.testcases.core.sections.MainTestSection
@@ -23,8 +26,9 @@ import com.kaspersky.kaspresso.testcases.models.TestBody
  * @param Data data transformed from [InitData] by special function.
  */
 abstract class BaseTestCase<InitData, Data>(
-    kaspressoBuilder: Kaspresso.Builder = Kaspresso.Builder.default(),
-    private val dataProducer: (((InitData.() -> Unit)?) -> Data)
+    kaspressoBuilder: Kaspresso.Builder = Kaspresso.Builder.simple(),
+    private val dataProducer: (((InitData.() -> Unit)?) -> Data),
+    private val mainSectionEnrichers: List<MainSectionEnricher<Data>> = emptyList()
 ) : TestAssistantsProvider {
 
     internal val kaspresso: Kaspresso = kaspressoBuilder.build()
@@ -35,6 +39,8 @@ abstract class BaseTestCase<InitData, Data>(
     override val adbServer: AdbServer = testAssistantsProvider.adbServer
     override val device: Device = testAssistantsProvider.device
     override val testLogger: UiTestLogger = testAssistantsProvider.testLogger
+    override val params: Params = testAssistantsProvider.params
+    override val resourceFilesProvider: ResourceFilesProvider = testAssistantsProvider.resourceFilesProvider
 
     /**
      * Starts the building of a test, sets the [BeforeTestSection] actions and returns an existing instance of
@@ -90,6 +96,7 @@ abstract class BaseTestCase<InitData, Data>(
         return TestBody.Builder<InitData, Data>().apply {
             this.testName = testName
             this.dataProducer = this@BaseTestCase.dataProducer
+            this.mainSectionEnrichers = this@BaseTestCase.mainSectionEnrichers
         }
     }
 }

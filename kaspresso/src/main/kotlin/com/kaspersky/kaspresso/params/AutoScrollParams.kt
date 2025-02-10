@@ -1,6 +1,8 @@
 package com.kaspersky.kaspresso.params
 
 import androidx.test.espresso.PerformException
+import androidx.test.uiautomator.UiObjectNotFoundException
+import com.kaspersky.components.kautomator.intercept.exception.UnfoundedUiObjectException
 import junit.framework.AssertionFailedError
 
 /**
@@ -8,14 +10,24 @@ import junit.framework.AssertionFailedError
  * [com.kaspersky.kaspresso.autoscroll.WebAutoScrollProviderImpl] parameters.
  */
 class AutoScrollParams(
-
     /**
      * The set of exceptions, if caught, the [com.kaspersky.kaspresso.autoscroll.AutoScrollProviderImpl] or
      * [com.kaspersky.kaspresso.autoscroll.WebAutoScrollProviderImpl] will autoscroll.
      */
-    var allowedExceptions: MutableSet<Class<out Throwable>> =
-        mutableSetOf(
+    val allowedExceptions: Set<Class<out Throwable>>
+) {
+
+    companion object {
+        val defaultAllowedExceptions: Set<Class<out Throwable>> = setOf(
             PerformException::class.java,
-            AssertionFailedError::class.java
+            AssertionFailedError::class.java,
+            UiObjectNotFoundException::class.java,
+            UnfoundedUiObjectException::class.java,
+            AssertionError::class.java
         )
-)
+
+        fun default() = AutoScrollParams(
+            allowedExceptions = defaultAllowedExceptions
+        )
+    }
+}

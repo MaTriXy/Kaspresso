@@ -1,15 +1,8 @@
 package com.kaspersky.kaspresso.internal.extensions.other
 
 import com.kaspersky.kaspresso.internal.exceptions.KaspressoError
+import com.kaspersky.kaspresso.internal.exceptions.RootViewWithoutFocusWrapperException
 import io.reactivex.exceptions.ExtCompositeException
-import java.io.PrintWriter
-import java.io.StringWriter
-
-/**
- * @return the stack trace of the [Throwable] as a [String].
- */
-internal fun Throwable.getStackTraceAsString(): String =
-    StringWriter().also { printStackTrace(PrintWriter(it)) }.toString()
 
 internal inline fun <reified T : Throwable> invokeSafely(
     exceptions: MutableList<T>,
@@ -52,15 +45,16 @@ internal fun <T : Throwable> List<T>.throwAll() {
  * @return true if the given throwable is contained by [allowed] set, false otherwise.
  */
 internal fun <T : Throwable> T.isAllowed(allowed: Set<Class<out Throwable>>): Boolean {
-    return when (this) {
-        is ExtCompositeException -> {
-            exceptions.find { e: Throwable ->
-                allowed.find { it.isAssignableFrom(e.javaClass) } != null
-            } != null
-        }
-        else -> {
-            allowed.find { it.isAssignableFrom(javaClass) } != null
-        }
+    return when {
+        javaClass.simpleName == "RootViewWithoutFocusException" -> allowed.find {
+            it.isAssignableFrom(RootViewWithoutFocusWrapperException::class.java) // RootViewWithoutFocusException class is private, so we cannot access it directly
+        } != null
+
+        this is ExtCompositeException -> exceptions.find {
+            e: Throwable -> allowed.find { it.isAssignableFrom(e.javaClass) } != null
+        } != null
+
+        else -> allowed.find { it.isAssignableFrom(javaClass) } != null
     }
 }
 

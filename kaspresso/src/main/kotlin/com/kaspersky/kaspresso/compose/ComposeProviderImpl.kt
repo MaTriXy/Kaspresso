@@ -3,104 +3,84 @@ package com.kaspersky.kaspresso.compose
 import androidx.test.espresso.ViewAction
 import androidx.test.espresso.ViewAssertion
 import androidx.test.espresso.ViewInteraction
-import com.agoda.kakao.common.actions.BaseActions
-import com.agoda.kakao.common.assertions.BaseAssertions
-import com.agoda.kakao.intercept.Interceptable
+import io.github.kakaocup.kakao.common.actions.BaseActions
+import io.github.kakaocup.kakao.common.assertions.BaseAssertions
+import io.github.kakaocup.kakao.intercept.Interceptable
+import com.kaspersky.components.kautomator.component.common.actions.UiBaseActions
+import com.kaspersky.components.kautomator.component.common.assertions.UiBaseAssertions
+import com.kaspersky.components.kautomator.intercept.base.UiInterceptable
+import com.kaspersky.components.kautomator.intercept.interaction.UiObjectInteraction
+import com.kaspersky.components.kautomator.intercept.operation.UiObjectAction
+import com.kaspersky.components.kautomator.intercept.operation.UiObjectAssertion
 import com.kaspersky.kaspresso.compose.pack.ActionsOnElementsPack
 import com.kaspersky.kaspresso.compose.pack.ActionsPack
-import com.kaspersky.kaspresso.failure.FailureLoggingProvider
-import com.kaspersky.kaspresso.failure.withLoggingOnFailureIfNotNull
-import com.kaspersky.kaspresso.flakysafety.FlakySafetyProvider
-import com.kaspersky.kaspresso.flakysafety.flakySafelyIfNotNull
-import com.kaspersky.kaspresso.interceptors.behavior.ViewBehaviorInterceptor
-import com.kaspersky.kaspresso.interceptors.behavior.impl.failure.FailureLoggingViewBehaviorInterceptor
-import com.kaspersky.kaspresso.interceptors.behavior.impl.flakysafety.FlakySafeViewBehaviorInterceptor
-import com.kaspersky.kaspresso.interceptors.tokakao.compose.ComposeKakaoViewInterceptor
-import com.kaspersky.kaspresso.interceptors.tokakao.impl.KakaoViewInterceptor
 import com.kaspersky.kaspresso.kaspresso.Kaspresso
 
 /**
  * The implementation of the [ComposeProvider] interface.
  */
 class ComposeProviderImpl(
-    private val kaspresso: Kaspresso
+    kaspresso: Kaspresso
 ) : ComposeProvider {
 
-    /**
-     * Composes a [block] of actions with their views to invoke on in one composite action that succeeds if at least
-     * one of it's parts succeeds.
-     *
-     * @param block the actions to compose.
-     */
-    override fun compose(block: ActionsOnElementsPack.() -> Unit) {
-        val (elements, actions) = ActionsOnElementsPack().apply(block).build()
+    private val composeExecutor = ComposeExecutor(kaspresso)
 
-        elements.forEach { it.setComposeInterception() }
-
-        val (flakySafetyProvider, failureLoggingProvider) = getProviders()
-
-        failureLoggingProvider.withLoggingOnFailureIfNotNull {
-            flakySafetyProvider.flakySafelyIfNotNull {
-                invokeComposed(actions, kaspresso.libLogger)
-            }
-        }
-
-        elements.forEach { it.setInterception() }
+    override fun compose(
+        timeoutMs: Long?,
+        intervalMs: Long?,
+        allowedExceptions: Set<Class<out Throwable>>?,
+        block: ActionsOnElementsPack.() -> Unit
+    ) {
+        val composeBranches = ActionsOnElementsPack().apply(block).build()
+        composeExecutor.executeComposeBranches(timeoutMs, intervalMs, allowedExceptions, composeBranches)
     }
 
-    /**
-     * Composes a [block] of actions on the given view of type [T] in one composite action that succeeds if at least
-     * one of it's parts succeeds.
-     *
-     * @param block the actions to compose.
-     */
-    override fun <T> T.compose(block: ActionsPack<T>.() -> Unit): Unit
-            where T : BaseActions, T : BaseAssertions, T : Interceptable<ViewInteraction, ViewAssertion, ViewAction> {
-
-        val actions: List<() -> Unit> = ActionsPack(this).apply(block).build()
-
-        setComposeInterception()
-
-        val (flakySafetyProvider, failureLoggingProvider) = getProviders()
-
-        failureLoggingProvider.withLoggingOnFailureIfNotNull {
-            flakySafetyProvider.flakySafelyIfNotNull {
-                invokeComposed(actions, kaspresso.libLogger)
-            }
-        }
-
-        setInterception()
+    override fun unsafeCompose(block: ActionsOnElementsPack.() -> Unit) {
+        val composeBranches = ActionsOnElementsPack().apply(block).build()
+        composeExecutor.executeComposeBranchesUnsafely(composeBranches)
     }
 
-    private fun getProviders(): Pair<FlakySafetyProvider?, FailureLoggingProvider?> {
-        var flakySafetyProvider: FlakySafetyProvider? = null
-        var failureLoggingProvider: FailureLoggingProvider? = null
+    override fun <Type> Type.compose(
+        timeoutMs: Long?,
+        intervalMs: Long?,
+        allowedExceptions: Set<Class<out Throwable>>?,
+        block: ActionsPack<Type>.() -> Unit
+    ) where Type : BaseActions,
+            Type : BaseAssertions,
+            Type : Interceptable<ViewInteraction, ViewAssertion, ViewAction> {
 
-        kaspresso.viewBehaviorInterceptors.forEach { viewBehaviorInterceptor: ViewBehaviorInterceptor ->
-            when (viewBehaviorInterceptor) {
-                is FlakySafeViewBehaviorInterceptor -> flakySafetyProvider = viewBehaviorInterceptor
-                is FailureLoggingViewBehaviorInterceptor -> failureLoggingProvider = viewBehaviorInterceptor
-            }
-        }
-
-        return Pair(flakySafetyProvider, failureLoggingProvider)
+        val composeBranches = ActionsPack(this).apply(block).build()
+        composeExecutor.executeComposeBranches(timeoutMs, intervalMs, allowedExceptions, composeBranches)
     }
 
-    private fun Interceptable<ViewInteraction, ViewAssertion, ViewAction>.setComposeInterception() {
-        val interceptor = ComposeKakaoViewInterceptor(kaspresso)
+    override fun <Type> Type.unsafeCompose(block: ActionsPack<Type>.() -> Unit)
+            where Type : BaseActions,
+                  Type : BaseAssertions,
+                  Type : Interceptable<ViewInteraction, ViewAssertion, ViewAction> {
 
-        intercept {
-            onCheck(true, interceptor::interceptCheck)
-            onPerform(true, interceptor::interceptPerform)
-        }
+        val composeBranches = ActionsPack(this).apply(block).build()
+        composeExecutor.executeComposeBranchesUnsafely(composeBranches)
     }
 
-    private fun Interceptable<ViewInteraction, ViewAssertion, ViewAction>.setInterception() {
-        val interceptor = KakaoViewInterceptor(kaspresso)
+    override fun <Type> Type.compose(
+        timeoutMs: Long?,
+        intervalMs: Long?,
+        allowedExceptions: Set<Class<out Throwable>>?,
+        block: ActionsPack<Type>.() -> Unit
+    ) where Type : UiBaseActions,
+            Type : UiBaseAssertions,
+            Type : UiInterceptable<UiObjectInteraction, UiObjectAssertion, UiObjectAction> {
 
-        intercept {
-            onCheck(true, interceptor::interceptCheck)
-            onPerform(true, interceptor::interceptPerform)
-        }
+        val composeBranches = ActionsPack(this).apply(block).build()
+        composeExecutor.executeComposeBranches(timeoutMs, intervalMs, allowedExceptions, composeBranches)
+    }
+
+    override fun <Type> Type.unsafeCompose(block: ActionsPack<Type>.() -> Unit)
+            where Type : UiBaseActions,
+                  Type : UiBaseAssertions,
+                  Type : UiInterceptable<UiObjectInteraction, UiObjectAssertion, UiObjectAction> {
+
+        val composeBranches = ActionsPack(this).apply(block).build()
+        composeExecutor.executeComposeBranchesUnsafely(composeBranches)
     }
 }

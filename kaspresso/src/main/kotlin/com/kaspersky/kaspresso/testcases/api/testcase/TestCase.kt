@@ -8,8 +8,9 @@ import com.kaspersky.kaspresso.kaspresso.Kaspresso
  * exception caused by re-initialization of the [Kaspresso], use
  * [com.kaspersky.kaspresso.testcases.api.scenario.Scenario] instead.
  */
+@Suppress("UnnecessaryAbstractClass")
 abstract class TestCase(
-    kaspressoBuilder: Kaspresso.Builder = Kaspresso.Builder.default()
+    kaspressoBuilder: Kaspresso.Builder = Kaspresso.Builder.simple()
 ) : BaseTestCase<Unit, Unit>(
     kaspressoBuilder = kaspressoBuilder,
     dataProducer = { action -> action?.invoke(Unit) }

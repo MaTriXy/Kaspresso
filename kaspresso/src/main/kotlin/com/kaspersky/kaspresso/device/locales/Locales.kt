@@ -10,6 +10,7 @@ import java.util.Locale
 internal class Locales(
     private val logger: UiTestLogger
 ) {
+
     companion object {
         private const val LOCALES_ARG = "localizations"
         private const val LANGUAGE_COUNTRY_SEPARATOR = "-"
@@ -24,6 +25,7 @@ internal class Locales(
      * @return set of supported locales.
      */
     fun getSupportedLocales(): Set<Locale> {
+        logger.i("Getting supported locales")
         return parseLocales(getLocaleString())
     }
 

@@ -1,0 +1,28 @@
+# This workflow runs all the checks on pull requests
+
+name: Pull Request Checks
+
+on: pull_request
+
+jobs:
+  pull-request-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v1
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      - name: Set up JDK
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: 17
+      - name: Run static analysis
+        run: make static_analysis
+      - name: Run unit tests
+        run: make unit_tests
+      - name: Build project
+        run: make compile_all

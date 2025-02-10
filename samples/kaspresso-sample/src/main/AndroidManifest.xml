@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
+
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.READ_CALL_LOG"/>
+    <uses-permission android:name="android.permission.READ_SMS"/>
+    <uses-permission android:name="android.permission.CHANGE_CONFIGURATION" tools:ignore="ProtectedPermissions"/>
+
+    <application
+        android:name="androidx.multidex.MultiDexApplication"
+        android:requestLegacyExternalStorage="true"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme"
+        tools:ignore="GoogleAppIndexingWarning">
+
+        <activity android:name=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".autoscrollfallback.AutoscrollScrollViewWithPaddingActivity"
+            android:label="@string/simple_fragment_title"/>
+
+        <activity
+            android:name=".simple.SimpleActivity"
+            android:label="@string/simple_fragment_title"/>
+
+        <activity
+            android:name=".measure.MeasureActivity"
+            android:label="@string/simple_fragment_title"/>
+
+        <activity
+            android:name=".web.WebViewActivity"
+            android:label="@string/main_screen_webview_button"
+            android:theme="@style/Theme.AppCompat.NoActionBar"/>
+
+        <activity
+            android:name=".flaky.CommonFlakyActivity"
+            android:label="@string/main_screen_scroll_view_sample_button"/>
+
+        <activity
+            android:name=".continuously.ContinuouslySampleActivity"
+            android:label="@string/main_screen_continuously_sample_button"/>
+
+        <activity
+            android:name=".device.DeviceSampleActivity"
+            android:label="@string/device_sample_title"/>
+
+        <activity
+            android:name=".devicefull.DeviceFullWindowSampleActivity"
+            android:label="@string/device_full_title"/>
+
+        <activity
+            android:name=".upgrade.UpgradeTestActivity"
+            android:label="@string/upgrade_title"/>
+
+        <activity
+            android:name=".compose.ComplexComposeSampleActivity"
+            android:label="@string/main_screen_complex_compose_sample_button"/>
+
+        <activity
+            android:name=".idlingwait.WaitForIdleActivity"
+            android:label="@string/main_screen_idlewaiting_sample_button"/>
+
+        <activity
+            android:name=".sharedtest.SharedTestActivity"
+            android:label="@string/main_screen_shared_test"/>
+
+        <activity android:name=".systemdialogs.SystemDialogsActivity"
+            android:label="@string/system_dialogs_sanity"/>
+
+        <activity
+            android:name=".systemlanguage.ChangeLocaleActivity"
+            android:label="@string/main_screen_change_language_mid_test_button"/>
+
+        <activity
+            android:name=".withtoolbar.WithToolbarActivity"
+            android:theme="@style/ToolbarTheme"
+            android:label="@string/main_screen_activity_with_toolbar_button"/>
+
+        <service
+            android:name=".device.DeviceSampleAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:label="@string/device_sample_accessibility_service_title">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService"/>
+            </intent-filter>
+        </service>
+    </application>
+
+</manifest>

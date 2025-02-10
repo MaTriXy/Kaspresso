@@ -9,6 +9,7 @@ import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiSelector
 import androidx.test.uiautomator.Until
 import com.kaspersky.kaspresso.device.server.AdbServer
+import com.kaspersky.kaspresso.instrumental.InstrumentalDependencyProvider
 import com.kaspersky.kaspresso.logger.UiTestLogger
 import org.hamcrest.CoreMatchers
 import org.hamcrest.MatcherAssert
@@ -20,19 +21,21 @@ import org.junit.Assert
 class AppsImpl(
     private val logger: UiTestLogger,
     private val context: Context,
-    private val uiDevice: UiDevice,
+    private val instrumentalDependencyProvider: InstrumentalDependencyProvider,
     private val adbServer: AdbServer
 ) : Apps {
 
     companion object {
-
         const val LAUNCH_RECENT_TIMEOUT = 1_000L
         const val LAUNCH_APP_TIMEOUT = 5_000L
     }
 
+    private val uiDevice: UiDevice
+        get() = instrumentalDependencyProvider.uiDevice
     private val chromePackageName: String = "com.android.chrome"
 
-    override val targetAppLauncherPackageName: String = uiDevice.launcherPackageName
+    override val targetAppLauncherPackageName: String
+        get() = uiDevice.launcherPackageName
 
     override val targetAppPackageName: String = context.packageName
 
@@ -45,6 +48,7 @@ class AppsImpl(
      */
     override fun install(apkPath: String) {
         adbServer.performAdb("install $apkPath")
+        logger.i("App $apkPath installed")
     }
 
     /**
@@ -55,7 +59,7 @@ class AppsImpl(
      * @param packageName an android package name of the app to be checked.
      * @param apkPath a path to the apk to be installed. The apk is hosted on the test server.
      */
-    override fun installIfNotExist(packageName: String, apkPath: String) {
+    override fun installIfNotExists(packageName: String, apkPath: String) {
         if (!isInstalled(packageName)) {
             install(apkPath)
         }
@@ -70,6 +74,7 @@ class AppsImpl(
      */
     override fun uninstall(packageName: String) {
         adbServer.performAdb("uninstall $packageName")
+        logger.i("App $packageName uninstalled")
     }
 
     /**
@@ -79,7 +84,7 @@ class AppsImpl(
      *
      * @param packageName an android package name of an app to be deleted.
      */
-    override fun uninstallIfExist(packageName: String) {
+    override fun uninstallIfExists(packageName: String) {
         if (isInstalled(packageName)) {
             uninstall(packageName)
         }
@@ -92,8 +97,7 @@ class AppsImpl(
      * @return a [Boolean] of installation state
      */
     override fun isInstalled(packageName: String): Boolean {
-        val packageManager = context.packageManager
-        if (packageManager == null) return false
+        val packageManager = context.packageManager ?: return false
         return try {
             packageManager.getApplicationInfo(packageName, 0)
             true
@@ -109,6 +113,7 @@ class AppsImpl(
         )
 
         val condition = Until.hasObject(By.pkg(launcherPackageName).depth(0))
+        logger.i("Wait $timeout for $launcherPackageName launch")
 
         Assert.assertTrue(
             uiDevice.wait(condition, timeout)
@@ -117,6 +122,7 @@ class AppsImpl(
 
     override fun waitForAppLaunchAndReady(timeout: Long, packageName: String) {
         val condition = Until.hasObject(By.pkg(packageName).depth(0))
+        logger.i("Wait $timeout for $packageName launch and ready")
 
         Assert.assertTrue(
             uiDevice.wait(condition, timeout)
@@ -148,9 +154,20 @@ class AppsImpl(
 
         data?.let { intent!!.data = it }
 
-        context.startActivity(intent)
+        try {
+            context.startActivity(intent)
+        } catch (e: SecurityException) {
+            /**
+            * On Android 11 you can't start activity of another app without "exported=true" in activity
+            * manifest, so as we use this method for launching application, we can use "adb shell monkey"
+            * with test-case=1, this case will only open app.
+            * See https://stackoverflow.com/a/25398877
+            **/
+            adbServer.performShell("monkey -p $packageName 1")
+        }
 
         val condition = Until.hasObject(By.pkg(packageName).depth(0))
+        logger.i("Wait $LAUNCH_APP_TIMEOUT for $packageName launch")
 
         uiDevice.wait(condition, LAUNCH_APP_TIMEOUT)
     }
@@ -161,6 +178,7 @@ class AppsImpl(
      * @param contentDescription the description of the app to launch.
      */
     override fun openRecent(contentDescription: String) {
+        logger.i("Open $contentDescription from recents")
         uiDevice.pressRecentApps()
 
         val appSelector = UiSelector().descriptionContains(contentDescription)
@@ -182,5 +200,6 @@ class AppsImpl(
      */
     override fun kill(packageName: String) {
         Runtime.getRuntime().exec(arrayOf("am", "force-stop", packageName))
+        logger.i("Force stop $packageName")
     }
 }

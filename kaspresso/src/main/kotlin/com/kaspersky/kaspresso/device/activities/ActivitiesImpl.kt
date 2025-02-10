@@ -1,9 +1,10 @@
 package com.kaspersky.kaspresso.device.activities
 
+import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.Instrumentation
 import android.os.Looper
 import androidx.test.internal.runner.junit4.statement.UiThreadStatement
-import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import com.kaspersky.kaspresso.logger.UiTestLogger
@@ -14,7 +15,8 @@ import org.junit.Assert
  * The implementation of the [Activities] interface.
  */
 class ActivitiesImpl(
-    private val logger: UiTestLogger
+    private val logger: UiTestLogger,
+    private val instrumentation: Instrumentation,
 ) : Activities {
 
     /**
@@ -43,7 +45,7 @@ class ActivitiesImpl(
         if (isMainThread) {
             findResumedActivity()
         } else {
-            InstrumentationRegistry.getInstrumentation().runOnMainSync(findResumedActivity)
+            instrumentation.runOnMainSync(findResumedActivity)
         }
 
         resumedActivity ?: logger.e("No resumed activity found")
@@ -54,6 +56,7 @@ class ActivitiesImpl(
     /**
      * Checks if passed activity is resumed.
      */
+    @SuppressLint("RestrictedApi")
     override fun isCurrent(clazz: Class<out Activity>) {
         UiThreadStatement.runOnUiThread {
             Assert.assertThat(

@@ -1,9 +1,9 @@
 package com.kaspersky.kaspresso.failure
 
+import android.util.Log
 import android.view.View
 import androidx.test.espresso.PerformException
 import com.kaspersky.kaspresso.internal.extensions.espressoext.describe
-import com.kaspersky.kaspresso.internal.extensions.other.getStackTraceAsString
 import com.kaspersky.kaspresso.logger.UiTestLogger
 import io.reactivex.exceptions.ExtCompositeException
 import junit.framework.AssertionFailedError
@@ -41,12 +41,12 @@ class FailureLoggingProviderImpl(
      * @param error the error to get stacktrace from.
      */
     override fun logStackTrace(error: Throwable) {
-        logger.e(error.getStackTraceAsString())
+        logger.e(Log.getStackTraceString(error))
 
         if (error is ExtCompositeException) {
             error.exceptions.forEachIndexed { i: Int, e: Throwable ->
                 logger.e("Composed exception ${i + 1} :")
-                logger.e(e.getStackTraceAsString())
+                logger.e(Log.getStackTraceString(e))
             }
         }
     }
@@ -66,7 +66,7 @@ class FailureLoggingProviderImpl(
                     error?.let { " because of ${error.javaClass.simpleName}" }
         )
 
-        error?.let { throw it.describedWith(viewMatcher) }
+        error?.let { throw describeError(it, viewMatcher) }
     }
 
     /**
@@ -76,18 +76,30 @@ class FailureLoggingProviderImpl(
      *
      * @return transformed [error].
      */
-    private fun Throwable.describedWith(viewMatcher: Matcher<View>?): Throwable {
-        return when (this) {
-            is PerformException -> {
+    private fun describeError(originalError: Throwable, viewMatcher: Matcher<View>?): Throwable {
+        return when {
+            originalError is PerformException -> {
                 PerformException.Builder()
-                    .from(this)
+                    .from(originalError)
                     .apply { viewMatcher?.let { withViewDescription(it.toString()) } }
                     .build()
+                    .apply { addSuppressed(originalError) }
             }
-            is AssertionError -> {
-                AssertionFailedError(message).initCause(this)
+            originalError is AssertionError -> {
+                AssertionFailedError(originalError.message)
+                    .initCause(originalError)
+                    .apply { addSuppressed(originalError) }
             }
-            else -> this
-        }.apply { stackTrace = Thread.currentThread().stackTrace }
+            isWebViewException(originalError) -> {
+                val message = StringBuilder("Failed to interact with web view! Usually it means that desired element is not found or JavaScript is disabled in web view")
+                viewMatcher?.let { message.append("\nView description: ${it.describe()}") }
+                RuntimeException(message.toString()).apply { addSuppressed(originalError) }
+            }
+            else -> originalError.apply { addSuppressed(RuntimeException()) }
+        }
+    }
+
+    private fun isWebViewException(throwable: Throwable): Boolean {
+        return throwable is RuntimeException && throwable.message?.contains("atom evaluation returned null", ignoreCase = true) ?: false
     }
 }
